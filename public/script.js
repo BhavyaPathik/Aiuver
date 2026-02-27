@@ -1,20 +1,51 @@
-let level = 3
 let currentQuestion = ""
+let currentLevel = 3
+let questionCount = 0
+let maxQuestions = 7
 
 async function startInterview() {
   const role = document.getElementById("role").value
+  currentLevel = parseInt(document.getElementById("level").value)
+
+  const levelConfig = {
+    1: 3,
+    2: 5,
+    3: 7,
+    4: 10
+  }
+
+  maxQuestions = levelConfig[currentLevel]
+  questionCount = 0
+
+  document.getElementById("chat").innerHTML = ""
+
+  askQuestion(role)
+}
+async function askQuestion(role) {
+  if (questionCount >= maxQuestions) {
+    document.getElementById("chat").innerHTML +=
+      "<p><b>Interview Complete 🎉</b></p>"
+    return
+  }
 
   const res = await fetch("/question", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role, level })
+    body: JSON.stringify({
+      role,
+      level: currentLevel,
+      questionNumber: questionCount + 1
+    })
   })
 
   const data = await res.json()
   currentQuestion = data.question
+  questionCount++
 
   document.getElementById("chat").innerHTML +=
     "<p><b>Interviewer:</b> " + currentQuestion + "</p>"
+
+  scrollToChat()
 }
 
 async function sendAnswer() {
@@ -48,6 +79,12 @@ async function sendAnswer() {
     "<p><b>Score:</b> " + parsed.score + "/10</p>"
   document.getElementById("chat").innerHTML +=
     "<p><b>Feedback:</b> " + parsed.feedback + "</p>"
+}
+askQuestion(document.getElementById("role").value)
+function scrollToChat() {
+  document.getElementById("chat").scrollIntoView({
+    behavior: "smooth"
+  })
 }
 async function uploadResume() {
   const fileInput = document.getElementById("resumeInput")

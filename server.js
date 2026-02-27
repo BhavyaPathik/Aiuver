@@ -41,26 +41,47 @@ async function callGemini(prompt) {
 }
 
 app.post("/question", async (req, res) => {
-    const { role, level } = req.body
+  const { role, level, questionNumber } = req.body
 
-    if (!resumeText || resumeText.trim().length < 50) {
-        return res.status(400).json({
-            question: "Please upload your resume before starting the interview."
-        })
+  const difficultyMap = {
+    1: {
+      label: "Beginner",
+      style: "basic conceptual and foundational questions",
+      tone: "friendly but structured"
+    },
+    2: {
+      label: "Intermediate",
+      style: "applied practical questions requiring explanation and examples",
+      tone: "professional and moderately challenging"
+    },
+    3: {
+      label: "Advanced",
+      style: "deep technical problem-solving questions with real-world context",
+      tone: "serious and analytical"
+    },
+    4: {
+      label: "Expert",
+      style: "edge cases, system design thinking, optimization and trade-offs",
+      tone: "strict and highly analytical"
     }
+  }
 
-    const prompt = `
-You are a calm, experienced mentor conducting an interview.
+  const selected = difficultyMap[level] || difficultyMap[3]
 
-Use the candidate's resume to tailor the question.
-
-Candidate Resume:
-${resumeText}
+  const prompt = `
+You are a strict technical interviewer.
 
 Role: ${role}
-Difficulty: ${level}/5
+Level: ${selected.label}
+Question Number: ${questionNumber}
 
-Ask ONE technical interview question based specifically on their experience.
+Instructions:
+- Ask ONE ${selected.style}.
+- Tone should be ${selected.tone}.
+- Do NOT provide hints.
+- Do NOT provide the answer.
+- Keep the question concise.
+- Make it realistic and industry-relevant.
 `
 
     try {

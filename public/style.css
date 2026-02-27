@@ -180,3 +180,54 @@ input[type="text"] {
   max-width: 900px;
   margin: 0 auto;
 }
+/* FOOTER */
+.footer {
+  margin-top: 120px;
+  background: #111;
+  color: #fff;
+  padding: 60px 20px 30px;
+}
+
+.footer-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.footer-brand h3 {
+  margin: 0;
+  font-size: 24px;
+  background: linear-gradient(135deg, #6A5AE0, #8F5BFF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.footer-brand p {
+  margin-top: 10px;
+  opacity: 0.7;
+}
+
+.footer-links {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: #ccc;
+  text-decoration: none;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: #8F5BFF;
+}
+
+.footer-bottom {
+  margin-top: 40px;
+  font-size: 13px;
+  opacity: 0.6;
+}
