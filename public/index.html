@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aiuver</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- LOGO -->
+  <div class="logo">
+    <img src="/icons/logo.svg" alt="Aiuver Logo" />
+  </div>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <h1>
+      Practice <span class="gradient-text">Interviews</span><br />
+      Without the Pressure
+    </h1>
+
+    <p class="hero-subtext">
+      Upload your resume. Get tailored technical questions.
+      Receive grounded feedback. Build real confidence.
+    </p>
+
+    <div class="hero-cta">
+      <button class="primary-btn" id="scrollToUpload">
+        Start Practicing
+      </button>
+    </div>
+  </section>
+
+
+  <!-- UPLOAD SECTION -->
+  <section class="upload-section" id="uploadSection">
+
+    <div class="upload-panel" id="dropZone">
+      <input type="file" id="resumeInput" accept=".pdf" hidden />
+
+      <div class="drop-area">
+        <p><strong>Drag & Drop your resume here</strong></p>
+        <p class="drop-sub">or click to browse</p>
+      </div>
+
+      <button id="browseBtn" class="secondary-btn">
+        Choose Resume
+      </button>
+
+      <button id="uploadBtn" class="primary-btn">
+        Upload
+      </button>
+
+      <select id="role">
+        <option>Frontend Developer</option>
+        <option>Backend Developer</option>
+        <option>Full Stack Developer</option>
+      </select>
+
+      <button id="startBtn" class="dark-btn" disabled>
+        Start Interview
+      </button>
+    </div>
+
+  </section>
+
+
+  <!-- INTERVIEW SECTION -->
+  <section class="interview-section">
+
+    <div id="chat" class="chat-box"></div>
+
+    <div class="input-area">
+      <input type="text" id="answer" placeholder="Type your answer..." />
+      <button onclick="sendAnswer()" class="primary-btn">
+        Submit
+      </button>
+    </div>
+
+  </section>
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>
