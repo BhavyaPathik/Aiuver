@@ -4,15 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aiuver</title>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
   </head>
 
   <body>
-    <!-- LOGO -->
-    <div class="logo">
-      <img src="/icons/logo.svg" alt="Aiuver Logo" />
-    </div>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+      <div class="logo">
+        <img src="/icons/logo.svg" alt="Aiuver Logo" />
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="resources.html">Resume Analysis</a></li>
+      </ul>
+    </nav>
 
+    <div class="main-container">
     <!-- HERO SECTION -->
     <section class="hero">
       <h1>
@@ -63,7 +72,16 @@
     </section>
 
     <!-- INTERVIEW SECTION -->
+    </div> <!-- end main-container -->
     <section class="interview-section">
+      <div class="interview-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <button id="refreshBtn" class="secondary-btn" title="Restart interview">🔄 Restart</button>
+        <div class="timer-controls">
+          <label for="timeLimit">Time limit (mins):</label>
+          <input type="number" id="timeLimit" min="0" step="1" style="width:60px;" />
+          <span id="timerDisplay" style="margin-left:10px; font-weight:600;"></span>
+        </div>
+      </div>
       <div id="chat" class="chat-box"></div>
 
       <div class="input-area">

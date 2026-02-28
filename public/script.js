@@ -5,11 +5,105 @@ let maxQuestions = 7
 let questionsList = []
 let currentRole = ""
 let interviewAnswers = []
+let isSpeaking = false
+let currentSpeech = null
+
+// timer
+let timerId = null
+let timeRemaining = 0
+
+// persistence
+function saveState() {
+  const state = {
+    currentQuestion,
+    currentLevel,
+    questionCount,
+    maxQuestions,
+    questionsList,
+    currentRole,
+    interviewAnswers,
+    timeRemaining
+  }
+  localStorage.setItem('interviewState', JSON.stringify(state))
+}
+
+function loadState() {
+  const s = localStorage.getItem('interviewState')
+  if (s) {
+    try {
+      const st = JSON.parse(s)
+      currentQuestion = st.currentQuestion || ''
+      currentLevel = st.currentLevel || 3
+      questionCount = st.questionCount || 0
+      maxQuestions = st.maxQuestions || 7
+      questionsList = st.questionsList || []
+      currentRole = st.currentRole || ''
+      interviewAnswers = st.interviewAnswers || []
+      timeRemaining = st.timeRemaining || 0
+      // restore chat HTML
+      if (st.chatHTML) {
+        document.getElementById('chat').innerHTML = st.chatHTML
+      }
+      return true
+    } catch {}
+  }
+  return false
+}
+
+function clearState() {
+  localStorage.removeItem('interviewState')
+}
+
+// timer helpers
+function startTimer() {
+  stopTimer()
+  updateTimerDisplay()
+  timerId = setInterval(() => {
+    if (timeRemaining > 0) {
+      timeRemaining--
+      updateTimerDisplay()
+      saveState()
+    } else {
+      stopTimer()
+      document.getElementById('chat').innerHTML += "<p><b>⏰ Time's up!</b> Interview paused.</p>"
+    }
+  }, 1000)
+}
+
+function stopTimer() {
+  if (timerId) clearInterval(timerId)
+  timerId = null
+}
+
+function updateTimerDisplay() {
+  const display = document.getElementById('timerDisplay')
+  if (!display) return
+  if (timeRemaining > 0) {
+    const mins = Math.floor(timeRemaining/60)
+    const secs = timeRemaining%60
+    display.textContent = `${mins}:${secs.toString().padStart(2,'0')}`
+  } else {
+    display.textContent = ''
+  }
+}
+
+
+
 
 async function startInterview() {
   const role = document.getElementById("role").value
   currentRole = role
   currentLevel = parseInt(document.getElementById("level").value)
+
+  // check time limit input
+  const timeInput = document.getElementById('timeLimit')
+  if (timeInput && parseInt(timeInput.value) > 0) {
+    timeRemaining = parseInt(timeInput.value) * 60 // seconds
+    startTimer()
+  } else {
+    timeRemaining = 0
+    stopTimer()
+  }
 
   const levelConfig = {
     1: 3,
@@ -50,6 +144,7 @@ async function startInterview() {
 
   // Clear and start
   document.getElementById("chat").innerHTML = ""
+  saveState()
   askQuestion()
 }
 
@@ -57,17 +152,70 @@ async function askQuestion() {
   if (questionCount >= questionsList.length) {
     document.getElementById("chat").innerHTML +=
       "<p><b>Interview Complete 🎉</b></p>"
+    saveState()
     return
   }
 
   currentQuestion = questionsList[questionCount].text
   questionCount++
 
-  document.getElementById("chat").innerHTML +=
-    "<p><b>Question " + questionCount + "/" + questionsList.length + ":</b></p>" +
-    "<p><b>Interviewer:</b> " + currentQuestion + "</p>"
+  const questionHTML = `
+    <div style="display: flex; align-items: flex-start; gap: 10px;">
+      <button onclick="speakQuestion()" style="
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+        margin-top: 5px;
+      " id="voiceBtn">🔊 Hear</button>
+      <div>
+        <p><b>Question ${questionCount}/${questionsList.length}:</b></p>
+        <p><b>Interviewer:</b> ${currentQuestion}</p>
+      </div>
+    </div>
+  `
 
+  document.getElementById("chat").innerHTML += questionHTML
   scrollToChat()
+  saveState()
+}
+
+function speakQuestion() {
+  if (!('speechSynthesis' in window)) {
+    alert('Voice feature is not supported in your browser')
+    return
+  }
+
+  const btn = document.getElementById('voiceBtn')
+
+  if (isSpeaking) {
+    window.speechSynthesis.cancel()
+    isSpeaking = false
+    btn.textContent = '🔊 Hear'
+    return
+  }
+
+  const utterance = new SpeechSynthesisUtterance(currentQuestion)
+  utterance.rate = 1
+  utterance.pitch = 1
+  utterance.volume = 1
+
+  utterance.onstart = () => {
+    isSpeaking = true
+    btn.textContent = '⏸ Stop'
+  }
+
+  utterance.onend = () => {
+    isSpeaking = false
+    btn.textContent = '🔊 Hear'
+  }
+
+  window.speechSynthesis.speak(utterance)
 }
 
 async function generateReport() {
@@ -88,6 +236,7 @@ async function generateReport() {
 
   const data = await res.json()
   const report = data.report || "Could not generate report."
+  const roadmap = data.roadmap || ""
   const score = data.score || 0
 
   const scoreColor = score >= 8 ? "#10b981" : score >= 6 ? "#f59e0b" : "#ef4444"
@@ -139,6 +288,13 @@ async function generateReport() {
   `
 
   document.getElementById("chat").innerHTML += reportHTML
+
+  // if the server provided a separate roadmap, display it below
+  if (roadmap) {
+    document.getElementById("chat").innerHTML +=
+      `<div class="roadmap-section">${roadmap}</div>`
+  }
+
   scrollToChat()
 }
 
@@ -185,6 +341,7 @@ async function sendAnswer() {
     score: parsed.score,
     feedback: parsed.feedback
   })
+  saveState()
 
   setTimeout(() => {
     if (questionCount < questionsList.length) {
@@ -228,6 +385,14 @@ async function uploadResume() {
   }
 }
 document.addEventListener("DOMContentLoaded", () => {
+  // mark active nav link
+  const links = document.querySelectorAll('.nav-links a');
+  links.forEach(a => {
+    if (a.href === window.location.href || a.href === window.location.href.split('?')[0]) {
+      a.classList.add('active');
+    }
+  });
+
 
   const browseBtn = document.getElementById("browseBtn")
   const uploadBtn = document.getElementById("uploadBtn")
@@ -245,88 +410,218 @@ document.addEventListener("DOMContentLoaded", () => {
     })
   }
 
-  // BROWSE
-  browseBtn.addEventListener("click", () => {
-    resumeInput.click()
-  })
+  // BROWSE (only on home page)
+  if (browseBtn) {
+    browseBtn.addEventListener("click", () => {
+      resumeInput.click()
+    })
+  }
 
   // SHOW FILE AFTER MANUAL SELECT
-  resumeInput.addEventListener("change", () => {
-    const file = resumeInput.files[0]
-    if (file) {
-      showSelectedFile(file)
-    }
-  })
+  if (resumeInput) {
+    resumeInput.addEventListener("change", () => {
+      const file = resumeInput.files[0]
+      if (file) {
+        showSelectedFile(file)
+      }
+    })
+  }
 
-  // DRAG EVENTS
-  dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault()
-    dropZone.classList.add("dragover")
-  })
-
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragover")
-  })
-
-  dropZone.addEventListener("drop", (e) => {
-    e.preventDefault()
-    dropZone.classList.remove("dragover")
-
-    const file = e.dataTransfer.files[0]
-
-    if (!file || file.type !== "application/pdf") {
-      alert("Please upload a PDF file.")
-      return
-    }
-
-    resumeInput.files = e.dataTransfer.files
-    showSelectedFile(file)
-  })
-
-  // UPLOAD
-  uploadBtn.addEventListener("click", async () => {
-    const success = await uploadResume()
-
-    if (success) {
-      startBtn.disabled = false
-    }
-  })
-
-  // START INTERVIEW WITH SCROLL
-  startBtn.addEventListener("click", async () => {
-
-    if (startBtn.disabled) return
-
-    document.querySelector(".interview-section").scrollIntoView({
-      behavior: "smooth"
+  // DRAG EVENTS (only on home page)
+  if (dropZone) {
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault()
+      dropZone.classList.add("dragover")
     })
 
-    setTimeout(() => {
-      startInterview()
-    }, 400)
-  })
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.classList.remove("dragover")
+    })
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault()
+      dropZone.classList.remove("dragover")
+
+      const file = e.dataTransfer.files[0]
+
+      if (!file || file.type !== "application/pdf") {
+        alert("Please upload a PDF file.")
+        return
+      }
+
+      resumeInput.files = e.dataTransfer.files
+      showSelectedFile(file)
+    })
+  }
+
+  // UPLOAD (only on home page)
+  if (uploadBtn) {
+    uploadBtn.addEventListener("click", async () => {
+      const success = await uploadResume()
+
+      if (success) {
+        startBtn.disabled = false
+      }
+    })
+  }
+
+  // LOAD persisted interview if available (only on home page)
+  if (startBtn && loadState()) {
+    if (questionsList.length > 0 && questionCount < questionsList.length) {
+      document.querySelector('.interview-section').scrollIntoView({behavior:'smooth'})
+      if (timeRemaining > 0) startTimer()
+      // restore time limit field
+      const timeInput = document.getElementById('timeLimit')
+      if (timeInput) timeInput.value = Math.ceil(timeRemaining/60)
+      askQuestion()
+    }
+  }
+
+  // START INTERVIEW WITH SCROLL (only on home page)
+  if (startBtn) {
+    startBtn.addEventListener("click", async () => {
+
+      if (startBtn.disabled) return
+
+      document.querySelector(".interview-section").scrollIntoView({
+        behavior: "smooth"
+      })
+
+      setTimeout(() => {
+        startInterview()
+      }, 400)
+    })
+  }
+
+  // REFRESH BUTTON
+  const refreshBtn = document.getElementById('refreshBtn')
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      clearState()
+      location.reload()
+    })
+  }
+
+  // ANSWER INPUT ENTER KEY
+  const answerInput = document.getElementById("answer")
+  if (answerInput) {
+    answerInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault()
+        sendAnswer()
+      }
+    })
+  }
+
+  // VOICE ANSWER BUTTON
+  const voiceBtn = document.getElementById('voiceAnswerBtn')
+  if (voiceBtn) {
+    voiceBtn.addEventListener('click', (e) => {
+      e.preventDefault()
+      toggleRecording()
+    })
+  }
+
+  // RESUME REVIEW section (resources page)
+  const reviewBrowseBtn = document.getElementById('reviewBrowseBtn')
+  const reviewResumeInput = document.getElementById('reviewResumeInput')
+  const reviewDropZone = document.getElementById('reviewDropZone')
+  const reviewBtn = document.getElementById('reviewBtn')
+  const reviewResult = document.getElementById('reviewResult')
+
+  if (reviewBrowseBtn) {
+    reviewBrowseBtn.addEventListener('click', () => {
+      reviewResumeInput.click()
+    })
+  }
+
+  if (reviewResumeInput) {
+    reviewResumeInput.addEventListener('change', () => {
+      const file = reviewResumeInput.files[0]
+      if (file && file.type === 'application/pdf') {
+        reviewBtn.disabled = false
+        showReviewFile(file)
+      } else {
+        alert('Please upload a PDF file.')
+        reviewResumeInput.value = ''
+        reviewBtn.disabled = true
+      }
+    })
+  }
+
+  if (reviewDropZone) {
+    reviewDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      reviewDropZone.classList.add('dragover')
+    })
+    reviewDropZone.addEventListener('dragleave', () => {
+      reviewDropZone.classList.remove('dragover')
+    })
+    reviewDropZone.addEventListener('drop', (e) => {
+      e.preventDefault()
+      reviewDropZone.classList.remove('dragover')
+      const file = e.dataTransfer.files[0]
+      if (!file || file.type !== 'application/pdf') {
+        alert('Please upload a PDF file.')
+        return
+      }
+      reviewResumeInput.files = e.dataTransfer.files
+      reviewBtn.disabled = false
+      showReviewFile(file)
+    })
+  }
+
+  if (reviewBtn) {
+    reviewBtn.addEventListener('click', async () => {
+      const file = reviewResumeInput.files[0]
+      if (!file) {
+        alert('Please select a resume first.')
+        return
+      }
+      reviewBtn.disabled = true
+      reviewResult.innerHTML = '<p style="text-align:center;opacity:0.7;">Analyzing resume...</p>'
+
+      const formData = new FormData()
+      formData.append('resume', file)
+
+      try {
+        const res = await fetch('/evaluate-resume', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          reviewResult.innerHTML = data.result || '<p>No feedback returned.</p>'
+          // scroll to result
+          setTimeout(() => {
+            reviewResult.scrollIntoView({ behavior: 'smooth' })
+          }, 100)
+        } else {
+          reviewResult.innerHTML = '<p style="color: #ef4444; text-align: center;">Error analyzing resume. Please try again.</p>'
+        }
+      } catch (err) {
+        console.error('Upload error:', err)
+        reviewResult.innerHTML = '<p>Error connecting to server.</p>'
+      }
+      reviewBtn.disabled = false
+    })
+  }
 
 })
 
-// -------- SHOW FILE UI --------
-function showSelectedFile(file) {
-  const dropArea = document.querySelector(".drop-area")
-
-  dropArea.innerHTML = `
-    <p style="color:#6A5AE0; font-weight:600;">
-       ${file.name}
-    </p>
-    <p class="drop-sub">File ready</p>
-  `
-}
-
-
-// -------- HANDLE MANUAL BROWSE --------
-if (resumeInput) {
-  resumeInput.addEventListener("change", () => {
-    const file = resumeInput.files[0]
-    if (file) {
-      showSelectedFile(file)
+// -------- SHOW REVIEW FILE UI --------
+function showReviewFile(file) {
+  const reviewDropZone = document.getElementById('reviewDropZone')
+  if (reviewDropZone) {
+    const dropArea = reviewDropZone.querySelector('.drop-area')
+    if (dropArea) {
+      dropArea.innerHTML = `
+        <p style="color:#6A5AE0; font-weight:600;">
+           ${file.name}
+        </p>
+        <p class="drop-sub">File ready</p>
+      `
     }
-  })
+  }
 }

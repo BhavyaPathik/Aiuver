@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resume Analysis - Aiuver</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="logo">
+        <img src="/icons/logo.svg" alt="Aiuver Logo" />
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="resources.html">Resume Analysis</a></li>
+      </ul>
+    </nav>
+
+    <div class="main-container">
+      <!-- RESUME REVIEW SECTION -->
+      <section class="upload-section" id="resumeReviewSection">
+        <div class="upload-panel" id="reviewDropZone">
+          <h2 style="text-align: center; margin-top: 0; margin-bottom: 20px; color: #1f2937;">Resume Review & Analysis</h2>
+          <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;">Get AI-powered feedback to improve your resume</p>
+          <input type="file" id="reviewResumeInput" accept=".pdf" hidden />
+          <div class="drop-area">
+            <p><strong>Drag &amp; Drop your resume here</strong></p>
+            <p class="drop-sub">or click to browse</p>
+          </div>
+          <button id="reviewBrowseBtn" class="secondary-btn">Choose Resume</button>
+          <button id="reviewBtn" class="primary-btn" disabled>Analyze Resume</button>
+        </div>
+      </section>
+
+      <div id="reviewResult" style="margin-top: 30px;"></div>
+    </div>
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-brand">
+          <h3>Aiuver</h3>
+          <p>Practice smarter. Interview calmer.</p>
+        </div>
+        <div class="footer-links">
+          <a href="#">About</a>
+          <a href="#">How It Works</a>
+          <a href="#">Privacy</a>
+          <a href="#">Contact</a>
+        </div>
+        <div class="footer-bottom">
+          <p>© 2026 Aiuver. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+    <script src="script.js"></script>
+  </body>
+</html>
