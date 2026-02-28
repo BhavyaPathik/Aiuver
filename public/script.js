@@ -2,9 +2,13 @@ let currentQuestion = ""
 let currentLevel = 3
 let questionCount = 0
 let maxQuestions = 7
+let questionsList = []
+let currentRole = ""
+let interviewAnswers = []
 
 async function startInterview() {
   const role = document.getElementById("role").value
+  currentRole = role
   currentLevel = parseInt(document.getElementById("level").value)
 
   const levelConfig = {
@@ -16,42 +20,136 @@ async function startInterview() {
 
   maxQuestions = levelConfig[currentLevel]
   questionCount = 0
+  questionsList = []
+  interviewAnswers = []
 
   document.getElementById("chat").innerHTML = ""
 
-  askQuestion(role)
+  // Show loading message
+  document.getElementById("chat").innerHTML +=
+    "<p><i>Generating personalized interview questions...</i></p>"
+
+  // Fetch all questions at once
+  const res = await fetch("/questions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      role,
+      level: currentLevel
+    })
+  })
+
+  const data = await res.json()
+  questionsList = data.questions || []
+
+  if (questionsList.length === 0) {
+    document.getElementById("chat").innerHTML +=
+      "<p>Error generating questions. Please try again.</p>"
+    return
+  }
+
+  // Clear and start
+  document.getElementById("chat").innerHTML = ""
+  askQuestion()
 }
-async function askQuestion(role) {
-  if (questionCount >= maxQuestions) {
+
+async function askQuestion() {
+  if (questionCount >= questionsList.length) {
     document.getElementById("chat").innerHTML +=
       "<p><b>Interview Complete 🎉</b></p>"
     return
   }
 
-  const res = await fetch("/question", {
+  currentQuestion = questionsList[questionCount].text
+  questionCount++
+
+  document.getElementById("chat").innerHTML +=
+    "<p><b>Question " + questionCount + "/" + questionsList.length + ":</b></p>" +
+    "<p><b>Interviewer:</b> " + currentQuestion + "</p>"
+
+  scrollToChat()
+}
+
+async function generateReport() {
+  document.getElementById("chat").innerHTML +=
+    "<hr style='margin: 20px 0; border: none; border-top: 1px solid #ddd;'>"
+  document.getElementById("chat").innerHTML +=
+    "<p style='text-align: center; font-style: italic; color: #666;'><i>🤖 AI is analyzing your performance...</i></p>"
+
+  const res = await fetch("/generate-report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      role,
+      role: currentRole,
       level: currentLevel,
-      questionNumber: questionCount + 1
+      answers: interviewAnswers
     })
   })
 
   const data = await res.json()
-  currentQuestion = data.question
-  questionCount++
+  const report = data.report || "Could not generate report."
+  const score = data.score || 0
 
-  document.getElementById("chat").innerHTML +=
-    "<p><b>Interviewer:</b> " + currentQuestion + "</p>"
+  const scoreColor = score >= 8 ? "#10b981" : score >= 6 ? "#f59e0b" : "#ef4444"
+  const scoreLabel = score >= 8 ? "Excellent" : score >= 6 ? "Good" : "Needs Work"
 
+  const reportHTML = `
+    <div style="margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; color: white;">
+      <h2 style="margin: 0 0 10px 0; font-size: 24px; text-align: center;">📋 Your Interview Report</h2>
+      
+      <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center;">
+        <p style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">Overall Performance</p>
+        <div style="font-size: 48px; font-weight: bold; margin: 10px 0;">${score}/10</div>
+        <p style="margin: 0; font-size: 16px; font-weight: 600; color: #${scoreColor === '#10b981' ? '10b981' : scoreColor === '#f59e0b' ? 'f59e0b' : 'ef4444'};">${scoreLabel}</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px; background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #667eea;">
+      ${report}
+    </div>
+
+    <style>
+      .report-section {
+        margin: 20px 0;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+      }
+      .report-section h3 {
+        margin: 0 0 12px 0;
+        color: #1f2937;
+        font-size: 18px;
+      }
+      .report-section ul {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+      .report-section li {
+        margin: 8px 0;
+        color: #374151;
+        line-height: 1.6;
+      }
+      .report-section p {
+        margin: 10px 0;
+        color: #374151;
+        line-height: 1.6;
+      }
+    </style>
+  `
+
+  document.getElementById("chat").innerHTML += reportHTML
   scrollToChat()
 }
 
 async function sendAnswer() {
   const answerInput = document.getElementById("answer")
   const answer = answerInput.value
+  
+  if (!answer.trim()) return
+  
   answerInput.value = ""
+  answerInput.disabled = true
 
   document.getElementById("chat").innerHTML +=
     "<p><b>You:</b> " + answer + "</p>"
@@ -79,20 +177,39 @@ async function sendAnswer() {
     "<p><b>Score:</b> " + parsed.score + "/10</p>"
   document.getElementById("chat").innerHTML +=
     "<p><b>Feedback:</b> " + parsed.feedback + "</p>"
+
+  // Store answer data
+  interviewAnswers.push({
+    question: currentQuestion,
+    answer: answer,
+    score: parsed.score,
+    feedback: parsed.feedback
+  })
+
+  setTimeout(() => {
+    if (questionCount < questionsList.length) {
+      document.getElementById("chat").innerHTML +=
+        "<hr style='margin: 20px 0; border: none; border-top: 1px solid #ddd;'>"
+      askQuestion()
+    } else {
+      generateReport()
+    }
+    answerInput.disabled = false
+  }, 500)
 }
-askQuestion(document.getElementById("role").value)
 function scrollToChat() {
   document.getElementById("chat").scrollIntoView({
     behavior: "smooth"
   })
 }
+// upload document
 async function uploadResume() {
   const fileInput = document.getElementById("resumeInput")
   const file = fileInput.files[0]
 
   if (!file) {
     alert("Please choose a PDF first.")
-    return
+    return false
   }
 
   const formData = new FormData()
@@ -104,9 +221,10 @@ async function uploadResume() {
   })
 
   if (res.ok) {
-    alert("Resume uploaded successfully!")
+    return true
   } else {
     alert("Upload failed.")
+    return false
   }
 }
 document.addEventListener("DOMContentLoaded", () => {
@@ -167,8 +285,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // UPLOAD
   uploadBtn.addEventListener("click", async () => {
-    await uploadResume()
-    startBtn.disabled = false
+    const success = await uploadResume()
+
+    if (success) {
+      startBtn.disabled = false
+    }
   })
 
   // START INTERVIEW WITH SCROLL
