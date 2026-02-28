@@ -403,3 +403,64 @@ const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log("Server running on port", PORT)
 })
+
+// generate two follow-up questions based on the candidate's answer
+app.post("/followups", async (req, res) => {
+  const { question, answer } = req.body
+
+  const prompt = `
+You are a thoughtful technical interviewer. Given the interview question and the candidate's answer below, generate exactly TWO concise follow-up questions that probe deeper, ask for clarification, or request a concrete example.
+
+Question: ${question}
+Answer: ${answer}
+
+Instructions:
+- Provide exactly 2 follow-up questions.
+- Keep them short (one sentence each).
+- Do NOT provide answers or commentary, return only the questions on separate lines.
+`
+
+  try {
+    const text = await callGemini(prompt)
+    let followUps = []
+
+    const raw = (text || "").trim()
+
+    // Try parse JSON array first
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        followUps = parsed.map(s => String(s).trim()).filter(Boolean)
+      }
+    } catch (e) {
+      // not JSON, continue
+    }
+
+    // If not JSON, split by lines and numbered prefixes
+    if (followUps.length === 0) {
+      const lines = raw.split(/\r?\n/).map(l => l.replace(/^\s*\d+\.|^Q\d+:|^\-|^\*\s*/i, '').trim()).filter(Boolean)
+      followUps = lines
+    }
+
+    // If still empty, extract sentences that end with a question mark
+    if (followUps.length === 0) {
+      const sentenceRegex = /[^.?!\n]+\?/g
+      const matches = raw.match(sentenceRegex) || []
+      followUps = matches.map(s => s.trim())
+    }
+
+    // As a last resort, fall back to splitting on common separators
+    if (followUps.length === 0 && raw.length > 0) {
+      const parts = raw.split(/\?|;|\n/).map(p => p.trim()).filter(Boolean)
+      followUps = parts.map(p => p.endsWith('?') ? p : p + '?')
+    }
+
+    // Clean and return at most 2 follow-ups
+    followUps = followUps.map(f => f.replace(/^"|"$/g, '').trim()).filter(Boolean).slice(0,2)
+
+    res.json({ followUps })
+  } catch (error) {
+    console.error(error)
+    res.json({ followUps: [] })
+  }
+})

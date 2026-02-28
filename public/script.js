@@ -7,6 +7,7 @@ let currentRole = ""
 let interviewAnswers = []
 let isSpeaking = false
 let currentSpeech = null
+let followUpState = null // { question, mainAnswer, followUps: [], answers: [] }
 
 // timer
 let timerId = null
@@ -86,8 +87,6 @@ function updateTimerDisplay() {
     display.textContent = ''
   }
 }
-
-
 
 
 async function startInterview() {
@@ -310,17 +309,82 @@ async function sendAnswer() {
   document.getElementById("chat").innerHTML +=
     "<p><b>You:</b> " + answer + "</p>"
 
-  const res = await fetch("/evaluate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      question: currentQuestion,
-      answer: answer
-    })
+  // If there's no follow-up flow active, request follow-ups
+  if (!followUpState) {
+    try {
+      const res = await fetch('/followups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: currentQuestion, answer })
+      })
+
+      const data = await res.json()
+      const followUps = data.followUps || []
+
+      if (followUps.length === 0) {
+        // No follow-ups provided, evaluate immediately
+        await evaluateCombinedAnswer(currentQuestion, answer)
+      } else {
+        // start follow-up flow
+        followUpState = {
+          question: currentQuestion,
+          mainAnswer: answer,
+          followUps,
+          answers: []
+        }
+
+        // Show first follow-up
+        document.getElementById('chat').innerHTML +=
+          `<p><b>Interviewer (follow-up 1):</b> ${followUps[0]}</p>`
+        saveState()
+      }
+    } catch (err) {
+      console.error('Follow-up fetch error:', err)
+      // fallback to evaluating the main answer
+      await evaluateCombinedAnswer(currentQuestion, answer)
+    }
+
+    answerInput.disabled = false
+    scrollToChat()
+    return
+  }
+
+  // If follow-up flow is active, treat this submission as follow-up answer
+  followUpState.answers.push(answer)
+
+  const idx = followUpState.answers.length
+  const total = followUpState.followUps.length
+
+  if (idx < total) {
+    // ask next follow-up
+    document.getElementById('chat').innerHTML +=
+      `<p><b>Interviewer (follow-up ${idx+1}):</b> ${followUpState.followUps[idx]}</p>`
+    answerInput.disabled = false
+    saveState()
+    scrollToChat()
+    return
+  }
+
+  // all follow-ups answered -> evaluate combined
+  const combined = `Main answer: ${followUpState.mainAnswer}\n\nFollow-ups:\n${followUpState.followUps.map((q,i)=>`Q${i+1}: ${followUpState.answers[i] || ''}`).join('\n')}`
+
+  await evaluateCombinedAnswer(followUpState.question, combined)
+
+  // clear follow-up state
+  followUpState = null
+  answerInput.disabled = false
+  saveState()
+  scrollToChat()
+}
+
+async function evaluateCombinedAnswer(question, combinedAnswer) {
+  const res = await fetch('/evaluate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, answer: combinedAnswer })
   })
 
   const data = await res.json()
-
   let parsed
 
   try {
@@ -329,15 +393,15 @@ async function sendAnswer() {
     parsed = { score: 5, feedback: data.result }
   }
 
-  document.getElementById("chat").innerHTML +=
-    "<p><b>Score:</b> " + parsed.score + "/10</p>"
-  document.getElementById("chat").innerHTML +=
-    "<p><b>Feedback:</b> " + parsed.feedback + "</p>"
+  document.getElementById('chat').innerHTML +=
+    `<p><b>Score:</b> ${parsed.score}/10</p>`
+  document.getElementById('chat').innerHTML +=
+    `<p><b>Feedback:</b> ${parsed.feedback}</p>`
 
-  // Store answer data
+  // Store combined answer as one interview item
   interviewAnswers.push({
-    question: currentQuestion,
-    answer: answer,
+    question,
+    answer: combinedAnswer,
     score: parsed.score,
     feedback: parsed.feedback
   })
@@ -345,13 +409,12 @@ async function sendAnswer() {
 
   setTimeout(() => {
     if (questionCount < questionsList.length) {
-      document.getElementById("chat").innerHTML +=
+      document.getElementById('chat').innerHTML +=
         "<hr style='margin: 20px 0; border: none; border-top: 1px solid #ddd;'>"
       askQuestion()
     } else {
       generateReport()
     }
-    answerInput.disabled = false
   }, 500)
 }
 function scrollToChat() {

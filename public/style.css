@@ -290,11 +290,52 @@ body {
 }
 
 select {
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid #ddd;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+  font-size: 15px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #1f2937;
+  font-weight: 500;
 }
 
+select:hover {
+  border-color: #6A5AE0;
+  box-shadow: 0 2px 8px rgba(106, 90, 224, 0.1);
+}
+
+select:focus {
+  outline: none;
+  border-color: #6A5AE0;
+  box-shadow: 0 0 0 3px rgba(106, 90, 224, 0.1);
+}
+
+#dropZone > .drop-area {
+  margin: 20px 0;
+}
+
+#dropZone > button {
+  margin: 0 12px;
+}
+
+#dropZone > select {
+  margin: 0 12px;
+}
+
+/* make drop zone layout flow into rows with a larger vertical gap */
+#dropZone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px 12px; /* 18px row gap, 12px column gap */
+}
+
+#dropZone > .drop-area {
+  flex-basis: 100%;
+}
 /* Interview Section */
 .interview-section {
   padding: 100px 20px;
@@ -326,13 +367,43 @@ select {
   cursor: pointer;
 }
 
+.interview-header .timer-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%);
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: 1px solid #dde4ff;
+}
+
 .interview-header .timer-controls label {
   font-size: 14px;
-  margin-right: 4px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.interview-header .timer-controls input[type="number"] {
+  padding: 8px 12px;
+  border: 1px solid #dde4ff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.interview-header .timer-controls input[type="number"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 #timerDisplay {
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 700;
   color: #ef4444;
 }
 
